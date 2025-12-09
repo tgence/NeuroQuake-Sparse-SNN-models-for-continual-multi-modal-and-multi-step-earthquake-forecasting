@@ -1,0 +1,43 @@
+synapse stdp_reversal_pot_nq:
+    state:
+        E_rev mV = -70 mV  # Initial reversal potential
+        pre_trace real = 0.
+        post_trace real = 0.
+
+    parameters:
+        d ms = 1 ms  @nest::delay  # Synaptic transmission delay
+        lambda real = .01
+        tau_tr_pre ms = 20 ms
+        tau_tr_post ms = 20 ms
+        alpha real = 1
+        mu_plus real = 1
+        mu_minus real = 1
+        E_rev_max mV = -65 mV  # Maximum reversal potential
+        E_rev_min mV = -80 mV  # Minimum reversal potential
+
+    equations:
+        pre_trace' = -pre_trace / tau_tr_pre
+        post_trace' = -post_trace / tau_tr_post
+
+    input:
+        pre_spikes <- spike
+        post_spikes <- spike
+
+    output:
+        spike
+
+    onReceive(post_spikes):
+        post_trace += 1
+
+        # potentiate E_rev
+        E_rev_ mV = E_rev_max * (E_rev / E_rev_max + (lambda * (1. - (E_rev / E_rev_max))**mu_plus * pre_trace))
+        E_rev = min(E_rev_max, E_rev_)
+
+    onReceive(pre_spikes):
+        pre_trace += 1
+
+        # depress E_rev
+        E_rev_ mV = E_rev_max * (E_rev / E_rev_max - (alpha * lambda * (E_rev / E_rev_max)**mu_minus * post_trace))
+        E_rev = max(E_rev_min, E_rev_)
+
+
